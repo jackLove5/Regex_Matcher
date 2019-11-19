@@ -16,10 +16,10 @@ These chapters present common algorithms/techniques used in scanning and parsing
   - The closure of a regex, Expr\*
   - The disjunction of two regexs, Expr+Expr
 * Order of precedence for regex operators (from highest to lowest)
-  - ()
-  - *
+  - parentheses
+  - closure
   - concatenation
-  - +
+  - disjunction
 * Ex: the regular expression "a+bc\*" will match "a", "b", "bc", "bcc", etc
 * Note: Avoid adding spaces to the regular expression unless you would like them to be interpreted
 * Ex: the regular expression " \*" will match "", " ", "  ", etc
