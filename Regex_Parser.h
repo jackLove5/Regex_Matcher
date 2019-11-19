@@ -16,10 +16,30 @@ class Regex_Parser
 {
   private:
     Regex_Parser() {}
+    
+    // Maps input strings to characters ("\+" maps to '+')
     static std::unordered_map<std::string, char> char_map;
+    
+    // The current location in the parse
     static size_t word_location;
+    
+    // The stream of input strings
     static std::vector<std::string> input_stream;
- 
+
+    /*
+     * Fill the map that resolves input strings to characters
+     */
+    static std::unordered_map<std::string, char> init_char_map();
+    
+    /*
+     * Turns the regular expression into an input stream represented by
+     * a vector of strings
+     */
+    static std::vector<std::string> create_input_stream(const std::string& );
+
+   /*
+    * Parser functions
+    */ 
     static NFA* goal();
     static NFA* expr();
     static NFA* e_prime(NFA* nfa);
@@ -28,9 +48,12 @@ class Regex_Parser
     static NFA* closure();
     static NFA* factor();
     static NFA* f(NFA* nfa);
-    static std::unordered_map<std::string, char> init_char_map();
-    static std::vector<std::string> create_input_stream(const std::string& );
+ 
   public:
+
+    /*
+     * Converts the regular expression to an NFA
+     */
     static NFA* regex_to_nfa(const std::string& regex);
 };
 

@@ -1,3 +1,7 @@
+/*
+ * Regex_Parser implementation file
+ */
+
 #include <iostream>
 
 #include "NFA.h"
@@ -8,18 +12,12 @@ using namespace std;
 static const char ALPHABET_START {' '};
 static const char ALPHABET_END {'~'};
 
-// Maps input strings to characters ("\+" maps to '+')
 std::unordered_map<std::string, char> Regex_Parser::char_map {init_char_map()};
 
-// The current location in the parse
 size_t Regex_Parser::word_location {0};
 
-// The stream of input strings
 std::vector<std::string> Regex_Parser::input_stream {};
 
-/*
- * Fill the map that resolves input strings to characters
- */
 std::unordered_map<std::string, char> Regex_Parser::init_char_map()
 {
   /*
@@ -40,10 +38,6 @@ std::unordered_map<std::string, char> Regex_Parser::init_char_map()
   return result;
 }
 
-/*
- * Turns the regular expression into an input stream represented by
- * a vector of strings
- */
 vector<std::string> Regex_Parser::create_input_stream(const std::string& regex)
 {
   vector<std::string> input_stream;
@@ -92,9 +86,6 @@ vector<std::string> Regex_Parser::create_input_stream(const std::string& regex)
   return input_stream;
 }
 
-/*
- * Converts the regular expression to an NFA
- */
 NFA* Regex_Parser::regex_to_nfa(const std::string& regex)
 {
 

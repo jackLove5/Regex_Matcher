@@ -1,18 +1,17 @@
-#include <iostream>
-
-#include "Compact_DFA.h"
-#include "NFA.h"
-#include "Regex_Parser.h"
-#include "DFA_Table.h"
-
 /*
  * A regular expression matching program
  */
+
+#include <iostream>
+#include "DFA.h"
+#include "NFA.h"
+#include "Regex_Parser.h"
 
 using namespace std;
 
 int main()
 {
+  // Prints the program's title
   void print_title();
   
   print_title();
@@ -20,6 +19,7 @@ int main()
   string input_regex;
   getline(cin, input_regex);
 
+  // Accept regular expressions from user until they enter "quit"
   while (input_regex != "quit")
   {
     // Parse the regular expression and create an NFA
@@ -33,13 +33,8 @@ int main()
     else
     {
       // create minimized DFA
-      DFA_Table table(*nfa_pt);
-      Compact_DFA dfa{table.get_compact_dfa(*nfa_pt)};
+      DFA dfa{*nfa_pt};
       dfa.minimize();
-
-      // Print the resulting minimized DFA
-      // cout << "Minimized DFA:" << endl;
-      // dfa.print();
 
       // Ask for strings for the DFA to accept
       string to_accept;
@@ -50,6 +45,7 @@ int main()
       while (to_accept != "quit")
       {
         bool accepted {dfa.accept(to_accept)};
+
         if (accepted)
         {
           cout << "accepted" << endl;
