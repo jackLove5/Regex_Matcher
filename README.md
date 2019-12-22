@@ -15,13 +15,13 @@ These chapters present common algorithms/techniques used in scanning and parsing
   - A regex in parentheses, (Expr)
   - The concatenation of two regexs, ExprExpr
   - The closure of a regex, Expr\*
-  - The disjunction of two regexs, Expr+Expr
+  - The disjunction of two regexs, Expr|Expr
 * Order of precedence for regex operators (from highest to lowest)
   - parentheses
   - closure
   - concatenation
   - disjunction
-* Ex: the regular expression "a+bc\*" will match "a", "b", "bc", "bcc", etc
+* Ex: the regular expression "a|bc\*" will match "a", "b", "bc", "bcc", etc
 
 * A bracket expression is a list of characters enclosed by square brackets
 * Ranges of characters can be included in a bracket expression
