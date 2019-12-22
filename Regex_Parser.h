@@ -2,6 +2,7 @@
 #define REGEX_PARSER
 
 #include <unordered_map>
+#include <unordered_set>
 #include <string>
 #include <vector>
 
@@ -21,10 +22,10 @@ class Regex_Parser
     static std::unordered_map<std::string, char> char_map;
     
     // The current location in the parse
-    static size_t word_location;
+    static size_t parse_location;
     
-    // The stream of input strings
-    static std::vector<std::string> input_stream;
+    // The input regex
+    static char* input;
 
     /*
      * Fill the map that resolves input strings to characters
@@ -37,6 +38,11 @@ class Regex_Parser
      */
     static std::vector<std::string> create_input_stream(const std::string& );
 
+    /*
+     * Returns true iff c is a special character
+     */
+    static bool is_special(char c);
+
    /*
     * Parser functions
     */ 
@@ -48,7 +54,15 @@ class Regex_Parser
     static NFA* closure();
     static NFA* factor();
     static NFA* f(NFA* nfa);
- 
+    static NFA* character();
+    static NFA* bracket();
+    static NFA* bracket_prime();
+    static void element_list(std::unordered_set<char>& set);
+    static void f_tail(std::unordered_set<char>& set);
+    static void element(std::unordered_set<char>& set);
+    static char element_prime(char c);
+    static void first(std::unordered_set<char>& set);
+
   public:
 
     /*

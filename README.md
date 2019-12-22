@@ -10,7 +10,8 @@ These chapters present common algorithms/techniques used in scanning and parsing
 
 ## Usage Notes/Specifics:
 * In this program, a regular expression is defined as
-  - A single character (ASCII values 32-126 and escape sequences "\\(", "\\)", "\\\*", "\\+", "\\\\")
+  - A single character (ASCII values 32-126 and escape sequences "\\(", "\\)", "\\\*", "\\|", "\\[", "\\]", "\\\\")
+  - A bracket expression
   - A regex in parentheses, (Expr)
   - The concatenation of two regexs, ExprExpr
   - The closure of a regex, Expr\*
@@ -21,6 +22,16 @@ These chapters present common algorithms/techniques used in scanning and parsing
   - concatenation
   - disjunction
 * Ex: the regular expression "a+bc\*" will match "a", "b", "bc", "bcc", etc
+
+* A bracket expression is a list of characters enclosed by square brackets
+* Ranges of characters can be included in a bracket expression
+* Ex: [a-zJKL] will match all lowercase letters and the uppercase letters J, K, and L
+* If the first character of the bracket expression is ^, then the expression will match all characters not included in the bracket expression
+* Metacharacters lose their meaning in bracket expressions
+* To include a literal ], place it first in the list
+* To include a literal ^, place it anywhere except first
+* A literal - cannot be used within a bracket expression
+
 * Note: Avoid adding spaces to the regular expression unless you would like them to be interpreted
 * Ex: the regular expression " \*" will match "", " ", "  ", etc
 

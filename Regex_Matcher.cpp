@@ -77,18 +77,20 @@ void print_title()
     << endl;
 
   cout << "\t- a single character" << endl;
+  cout << "\t- a bracket expression" << endl;
   cout << "\t- a regular expression in parentheses \"(Expr)\"" << endl;
   cout << "\t- the closure of a regular expression \"Expr*\"" << endl;
   cout << "\t- the concatenation of two regular expressions \"ExprExpr\"" <<
-    endl;
-  
-  cout << "\t- the disjunction of two regular expressions \"Expr+Expr\"" <<
+    endl; 
+  cout << "\t- the disjunction of two regular expressions \"Expr|Expr\"" <<
     endl << endl;
+
 
   cout << ". \"a single character\" means:" << endl;
   cout << "\t- any printable ascii character (including spaces)" << endl;
   cout << "\t- the following escape sequences: " << 
-    "\'\\+\', \'\\*\', \'\\(\',\'\\)\', and \'\\\\\'" << endl << endl;
+    "\'\\|\', \'\\*\', \'\\(\',\'\\)\', \'\\[\', \'\\]\', and \'\\\\\'" << 
+    endl << endl;
   
   cout << ". The interpretation of the regular expressions follows" <<
     " the following order of operations" << endl;
@@ -96,12 +98,27 @@ void print_title()
   cout << "\t- ()" << endl;
   cout << "\t- *" << endl;
   cout << "\t- concatenation" << endl;
-  cout << "\t- +" << endl << endl;
+  cout << "\t- |" << endl << endl;
   cout << "Ex: \"a*\" matches \"\", \"a\", \"aa\"" <<
-    " and does not match \"b\", \"aaaab\", \"aaabaaa\"" << endl;
+    " and does not match \"b\", \"aaaab\", \"aaabaaa\"" << endl << endl;
 
-  cout << "Ex: \"(c+C)(\\+\\+)\\+*\" matches \"c++\", \"C+++\", \"c++++\"" << 
-    " and does not match \"c+\", \"c\", \"C#\"" << endl << endl;
+  cout << "A bracket expression is a list of characters enclosed " <<
+    "by square brackets []" << endl;
+  cout << "Ranges of characters can be included in a bracket expression" << 
+    endl;
+  cout << "Ex: [a-zJKL] matches all lowercase letters and";
+  cout << " the uppercase letters J, K, and L" << endl << endl;
+
+  cout << "If the first character of the bracket expression is \'^\', ";
+  cout << "then the bracket expression will match all characters except ";
+  cout << "the characters in the bracket expression" << endl;
+
+  cout << "Metacharacters lose their meaning in bracket expressions." << endl;
+  cout << "To include the literal ']', place it first in the list." << endl;
+  cout << "To include the literal '^', place it anywhere except first." << 
+    endl;
+  cout << "A literal '-' cannot be used within a bracket expression" << endl;
+  cout << endl;
 
   cout << "Enter a regular expression. Type \"quit\" to quit: ";
 
