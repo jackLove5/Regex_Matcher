@@ -27,7 +27,7 @@ NFA::NFA(char c)
   final_state_id = transition.dst_node_id;
 }
 
-void NFA::concatenate(const NFA* other)
+void NFA::concatenate(const unique_ptr<NFA>& other)
 {
   unsigned size_offset {static_cast<unsigned>(state_map.size())};
   unsigned other_start {other->start_state_id + size_offset};
@@ -53,7 +53,7 @@ void NFA::concatenate(const NFA* other)
   final_state_id = other->final_state_id + size_offset;
 }
 
-void NFA::disjunction(const NFA* other)
+void NFA::disjunction(const unique_ptr<NFA>& other)
 {
   unsigned size_offset {static_cast<unsigned>(state_map.size())};
   unsigned other_start {other->start_state_id + size_offset};

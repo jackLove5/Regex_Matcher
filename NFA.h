@@ -1,6 +1,7 @@
 #ifndef NFA_H
 #define NFA_H
 
+#include <memory>
 #include <vector>
 #include <list>
 #include <unordered_set>
@@ -36,13 +37,13 @@ class NFA
      * Construct an NFA corresponding to the disjunction of both operands'
      * regular expressions
      */
-    void disjunction(const NFA* other);
+    void disjunction(const std::unique_ptr<NFA>& other);
     
     /*
      * Constructs an NFA corresponding to the concatenation of both operands'
      * regular expressions
      */
-    void concatenate(const NFA* other);
+    void concatenate(const std::unique_ptr<NFA>& other);
     
     /*
      * Construct the NFA corresponding to the closure of the current NFA's

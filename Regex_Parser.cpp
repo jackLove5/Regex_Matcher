@@ -5,6 +5,10 @@
 #include <iostream>
 #include <string>
 #include <unordered_set>
+#include <algorithm>
+#include <memory>
+#include <exception>
+#include <sstream>
 #include <string.h>
 
 #include "NFA.h"
@@ -19,28 +23,29 @@ size_t Regex_Parser::parse_location {0};
 
 char* Regex_Parser::input;
 
-NFA* Regex_Parser::regex_to_nfa(const std::string& regex)
+unique_ptr<NFA> Regex_Parser::regex_to_nfa(const std::string& regex)
 {
   parse_location = 0;
 
-  input = new char[regex.length() + 1];
+  auto cpy {regex};
+  remove_spaces(cpy);
+  input = new char[cpy.length() + 1];
   
-  strcpy(input, regex.c_str());
+  strcpy(input, cpy.c_str());
 
   // Parse the regex
-  NFA* result = goal();
+  unique_ptr<NFA> result = goal();
 
   delete [] input;
-  
-  // Report results
-  if (result != nullptr && parse_location == regex.length())
-  {
-    return result;
-  }
-  else
-  {
-    return nullptr;
-  }
+  return result;
+}
+
+void Regex_Parser::remove_spaces(string& str)
+{
+  auto part_end {std::stable_partition(str.begin(), str.end(), 
+      [](char c){ return c != ' ';})};
+
+  str = string(str.begin(), part_end);
 }
 
 /*
@@ -50,31 +55,20 @@ NFA* Regex_Parser::regex_to_nfa(const std::string& regex)
  */
 
 // Goal -> Expr
-NFA* Regex_Parser::goal()
+unique_ptr<NFA> Regex_Parser::goal()
 {
   return expr();
 }
 
 // Expr -> TermE'
-NFA* Regex_Parser::expr()
+unique_ptr<NFA> Regex_Parser::expr()
 {
   auto nfa {term()};
-  if (nfa != nullptr)
+  auto operand {e_prime()};
+  if (operand != nullptr)
   {
-    NFA* operand {e_prime(nfa)};
-    if (operand != nullptr)
-    {
-      if (operand != nfa)
-      {
-        nfa->disjunction(operand);      
-        delete operand;
-      }
-    }
-    else
-    {
-      delete nfa;
-      return nullptr;
-    }
+    // Scanned two terms. Take the alternation of the two operands
+    nfa->disjunction(operand);
   }
 
   return nfa;
@@ -82,7 +76,7 @@ NFA* Regex_Parser::expr()
 
 // E' -> |TermE'
 // E' -> ""
-NFA* Regex_Parser::e_prime(NFA* nfa)
+unique_ptr<NFA> Regex_Parser::e_prime()
 {
   if (input[parse_location] == '|')
   {
@@ -90,67 +84,38 @@ NFA* Regex_Parser::e_prime(NFA* nfa)
     parse_location++;
 
     auto op1 = term();
-    if (op1 == nullptr)
+    auto op2 = e_prime();
+    if (op2 != nullptr)
     {
-      return nullptr;
-    }
-
-    auto op2 = e_prime(nfa);
-    if (op2 == nullptr)
-    {
-      delete op1;
-      return nullptr;
-    }
-    
-    if (op2 != nfa)
-    {
+      // Scanned two terms. Take the alternation of the two operands
       op1->disjunction(op2);
-      delete op2;
     }
 
     return op1;
   }
-  else if (input[parse_location] == ')' || input[parse_location] == '\0')
-  {
-    // E' -> ""
-    return nfa;
-  }
   else
   {
-    // error
+    // E' -> ""
     return nullptr;
   }
 }
 
 // Term -> closureT'
-NFA* Regex_Parser::term()
+unique_ptr<NFA> Regex_Parser::term()
 {
   auto nfa {closure()};
-
-  if (nfa == nullptr)
+  unique_ptr<NFA> operand = t_prime();
+  if (operand != nullptr)
   {
-    return nullptr;
-  }
-
-  NFA* operand = t_prime(nfa);
-  if (operand == nullptr)
-  {
-    delete nfa;
-    return nullptr;
-  }
-
-  // If we scanned a new closure, concatenate the operands
-  if (operand != nfa)
-  {
+    // Scanned another closure. Concatenate the operands
     nfa->concatenate(operand);
-    delete operand;
   }
 
   return nfa;
 }
 
 /*
- * [, ], *, (, ), \, |
+ * Special characters: [, ], *, (, ), \, |
  */
 bool Regex_Parser::is_special(char c)
 {
@@ -158,102 +123,62 @@ bool Regex_Parser::is_special(char c)
     c == ']' || c == '*' || c == '|' || c == '\\';
 }
 
+
+bool Regex_Parser::is_escapable(char c)
+{
+  return is_special(c) || c == 's';
+}
+
 // T' -> closureT'
 // T' -> ""
-
-// Returns pointer to new dfa if it scanned a new closure
-// Returns nfa if it scanned a terminal symbol
-// Returns nullptr if it encountered a syntax error
-NFA* Regex_Parser::t_prime(NFA* nfa)
+unique_ptr<NFA> Regex_Parser::t_prime()
 {
   char c = input[parse_location];
   if (c == '(' || c == '[' || c == '\\' ||
       (c <= ALPHABET_END && c >= ALPHABET_BEGIN && !is_special(c)))
   {
-    NFA* op1 = closure();
-    if (op1 == nullptr)
-    {
-      return nullptr;
-    }
+    unique_ptr<NFA> op1 = closure();
+    unique_ptr<NFA> op2 = t_prime();
 
-    NFA* op2 = t_prime(nfa);
-    if (op2 == nullptr)
+    if (op2 != nullptr)
     {
-      delete op1;
-      return nullptr;
-    }
-
-    // Scanned a new closure. Concatenate the operands
-    if (op2 != nfa)
-    {
+      // Scanned another closure. Concatenate the operands
       op1->concatenate(op2);
-      delete op2;
     }
 
     return op1;
   }
   else if (c == '|' || c == '\0' || c == ')')
   {
-    return nfa;
+    // T' -> ""
+    return nullptr;
   }
   else
   {
-    return nullptr;
+    string msg = string("Invalid character ") + input[parse_location];
+    throw std::runtime_error(msg);
   }
 }
 
 // closure -> FactorF
-NFA* Regex_Parser::closure()
+unique_ptr<NFA> Regex_Parser::closure()
 {
   auto nfa {factor()};
-  if (nfa == nullptr)
-  {
-    return nullptr;
-  }
-
-  return f(nfa);
+  f(nfa);
+  return nfa;
 }
-
-// f -> *
-// f -> ""
-NFA* Regex_Parser::f(NFA* nfa)
-{
-  char c {input[parse_location]};
-
-  if (c == '*')
-  {
-    nfa->closure();
-    parse_location++;
-    return nfa;
-  }
-  
-  if (c == '(' || c == '|' || c == '\0' || c == '\\' || c == '[' ||
-      c == ')' || (c <= ALPHABET_END && c >= ALPHABET_BEGIN && !is_special(c)))
-  {
-    return nfa;
-  }
-  else
-  {
-    return nullptr;
-  }
-}
-
 
 // Factor -> (Expr)
 // Factor -> character
 // Factor -> bracket
-NFA* Regex_Parser::factor()
+unique_ptr<NFA> Regex_Parser::factor()
 {
   char c {input[parse_location]};
 
   if (c == '(')
   {
     parse_location++;
-    NFA* ret {expr()};
-    if (ret == nullptr)
-    {
-      return nullptr;
-    }
+    unique_ptr<NFA> ret {expr()};
 
     c = input[parse_location];
     if (c == ')')
@@ -263,14 +188,8 @@ NFA* Regex_Parser::factor()
     }
     else
     {
-      delete ret;
-      return nullptr;
+     throw std::runtime_error("Expected closing \')\'");
     }
-  }
-  else if (c == '\\' || 
-      (c <= ALPHABET_END && c >= ALPHABET_BEGIN && !is_special(c)))
-  {
-    return character();
   }
   else if (c == '[')
   {
@@ -278,34 +197,71 @@ NFA* Regex_Parser::factor()
   }
   else
   {
-    return nullptr;
+    return character();
+  }
+}
+
+// f -> *
+// f -> ""
+void Regex_Parser::f(unique_ptr<NFA>& nfa)
+{
+  char c {input[parse_location]};
+  if (c == '*')
+  {
+    nfa->closure();
+    parse_location++;
   }
 }
 
 // character -> non_escapable_ascii
 // character -> \escapable_ascii            
-NFA* Regex_Parser::character()
+unique_ptr<NFA> Regex_Parser::character()
 {
   char new_char = input[parse_location];
-  if (input[parse_location] == '\\')
+  if (new_char == '\\')
   {
     parse_location++;
-    if (!is_special(input[parse_location]))
+    char esc_char {input[parse_location]};
+    if (!is_escapable(esc_char))
     {
-      return nullptr;
+      string msg = string("Invalid escape character ") + esc_char; 
+      throw std::runtime_error(msg);
     }
     else
     {
-      new_char = input[parse_location];
+      if (is_special(esc_char))
+      {
+        // Character to be escaped is a metacharacter ex: \* -> '*'
+        new_char = esc_char;
+      }
+      else
+      {
+        // Character to be escaped is not a metacharacter ex: \s -> ' '
+        switch (esc_char)
+        {
+          case 's':
+            new_char = ' ';
+          break;
+    
+          default:
+            new_char = esc_char;
+        }
+      }
     }
+  }
+  else if (new_char > ALPHABET_END || new_char < ALPHABET_BEGIN ||
+      is_special(new_char))
+  {
+    string msg = string("Invalid \'") + new_char + string("\' character");
+    throw std::runtime_error(msg);
   }
 
   parse_location++;
-  return new NFA(new_char);
+  return std::make_unique<NFA>(new_char);
 }
 
 // bracket -> [bracket_prime
-NFA* Regex_Parser::bracket()
+unique_ptr<NFA> Regex_Parser::bracket()
 {
   parse_location++;
   return bracket_prime();
@@ -313,9 +269,9 @@ NFA* Regex_Parser::bracket()
 
 // bracket_prime -> element_list]
 // bracket_prime -> ^element_list]
-NFA* Regex_Parser::bracket_prime()
+unique_ptr<NFA> Regex_Parser::bracket_prime()
 {
-  NFA* ret = nullptr;
+  unique_ptr<NFA> ret = nullptr;
   unordered_set<char> set;
 
   bool complement = input[parse_location] == '^';
@@ -325,9 +281,9 @@ NFA* Regex_Parser::bracket_prime()
   }
 
   element_list(set);
-  if (set.find('\0') != set.end() || input[parse_location] != ']')
+  if (input[parse_location] != ']')
   {
-    return nullptr;
+    throw std::runtime_error("Expected closing \']\'");
   }
 
   parse_location++;
@@ -339,139 +295,150 @@ NFA* Regex_Parser::bracket_prime()
     {
       if (ret == nullptr)
       {
-        ret = new NFA(c);
+        ret = std::make_unique<NFA>(c);
       }
       else
       {
-        NFA* op1 = new NFA(c);
+        unique_ptr<NFA> op1 = std::make_unique<NFA>(c);
         ret->disjunction(op1);
-        delete op1;
       }
     }
   }
-  
+ 
   return ret;
 }
 
-// element_list -> first f_tail
-// element_list -> element
+// element_list -> begin more
 void Regex_Parser::element_list(unordered_set<char>& set)
+{
+  begin(set);
+  more(set);
+}
+
+// begin -> ]b_prime
+// begin -> element
+void Regex_Parser::begin(unordered_set<char>& set)
 {
   char c {input[parse_location]};
   if (c == ']')
   {
-    first(set);
-    f_tail(set);
-  }
-  else if (c >= ALPHABET_BEGIN && c <= ALPHABET_END)
-  {
-    element(set);
-  }
-}
-
-// f_tail -> element
-// f_tail -> ""
-void Regex_Parser::f_tail(unordered_set<char>& set)
-{
-  char c {input[parse_location]};
-  if (c >= ALPHABET_BEGIN && c <= ALPHABET_END && c != ']')
-  {
-    element(set);
-  }
-  else if (c == ']')
-  {
-    // f_tail -> ""
-  }
-  else
-  {
-    set.emplace('\0');
-  }
-}
-
-// element -> ascii element_prime element
-// element -> ""
-void Regex_Parser::element(unordered_set<char>& set)
-{
-  char c {input[parse_location]};
-  if (c >= ALPHABET_BEGIN && c <= ALPHABET_END && c != ']' && c != '-')
-  {
-    char start_char {c};
     parse_location++;
-    char end_char {element_prime(start_char)};
     
-    if (end_char == '\0' || end_char < start_char)
-    {
-      set.emplace('\0');
-    }
-    else
-    {
-      for (char c {start_char}; c <= end_char; c++)
-      {
-        set.emplace(c);
-      }
-    }
-
-    element(set);
-  }
-  else if (c == ']')
-  {
-    // element -> ""
-  }
-  else
-  {
-    set.emplace('\0');
-  }
-
-}
-
-// element_prime -> - ascii
-// element_prime -> ""
-char Regex_Parser::element_prime(char start)
-{
-  char c {input[parse_location]};
-
-  if (c == '-')
-  {
-    parse_location++;
-    char ret {input[parse_location]};
-    
-    if (ret >= ALPHABET_BEGIN && ret <= ALPHABET_END && ret != '-' && ret != ']')
-    {
-      parse_location++;
-      return ret;
-    }
-    else
-    {
-      return '\0';
-    }
-  }
-  else if (c >= ALPHABET_BEGIN && c <= ALPHABET_END)
-  {
-    // element -> ""
-    return start;
-  }
-  else
-  {
-    return '\0';
-  }
-}
-
-// first -> ]element_prime
-void Regex_Parser::first(unordered_set<char>& set)
-{
-  parse_location++;
-  char start_char {']'};
-  char end_char {element_prime(start_char)};
-
-  if (end_char != '\0' && end_char >= start_char)
-  {
-    for (char c {start_char}; c <= end_char; c++)
+    char end {b_prime()};
+    for (; c <= end; c++)
     {
       set.emplace(c);
     }
   }
   else
   {
-    set.emplace('\0');
+    element(set);
+  }
+}
+
+// b_prime -> - ascii
+// b_prime -> ""
+char Regex_Parser::b_prime()
+{
+  if (input[parse_location] == '-')
+  {
+    parse_location++;
+    char end {input[parse_location]};
+    
+    if (end < ']' || end > ALPHABET_END)
+    {
+      string msg = string("Invalid range ]-") + end;
+      throw std::runtime_error(msg);
+    }
+    else
+    {
+      return end;
+    }
+  }
+  else
+  {
+    // b_prime -> ""
+    return ']';
+  } 
+}
+
+// element -> ascii element_prime
+// element -> -]
+void Regex_Parser::element(unordered_set<char>& set)
+{
+  char c {input[parse_location]};
+  if (c >= ALPHABET_BEGIN && c <= ALPHABET_END && c != '-' && c != ']')
+  {
+    parse_location++;
+    char end {element_prime(c)};
+    for (; c <= end; c++)
+    {
+      set.emplace(c);
+    }
+  }
+  else if (c == '-')
+  {
+    if (input[parse_location + 1] == ']')
+    {
+      parse_location++;
+      set.emplace('-');
+    }
+    else
+    {
+      throw std::runtime_error("Invalid \'-\' placement in bracket expression");
+    }
+  }
+  else
+  {
+    throw std::runtime_error("Expected bracket element");
+  }
+}
+
+// element_prime -> - ascii
+// element_prime -> - -]
+// element_prime -> ""
+char Regex_Parser::element_prime(char start)
+{
+  char c {input[parse_location]};
+  if (c == '-')
+  {
+    parse_location++;
+    char end {input[parse_location]};
+    parse_location++;
+    
+    if (end == '-' && input[parse_location] != ']')
+    {
+      throw std::runtime_error("Invalid \'-\' placement in bracket expression");
+    }
+    else if (end >= start && end <= ALPHABET_END && end != ']')
+    {
+      return end;
+    }
+    else
+    {
+      string msg = string("Invalid range ") + start + "-" + end;
+      throw std::runtime_error(msg);
+    }
+  }
+  else
+  {
+    // element_prime -> ""
+    return start;
+  }
+}
+
+// more -> element more
+// more -> ""
+void Regex_Parser::more(unordered_set<char>& set)
+{
+  char c {input[parse_location]};
+  if (c == ']')
+  {
+    // more -> ""
+  }
+  else
+  {
+    element(set);
+    more(set);
   }
 }

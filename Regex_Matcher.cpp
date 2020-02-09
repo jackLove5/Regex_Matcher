@@ -3,6 +3,8 @@
  */
 
 #include <iostream>
+#include <exception>
+
 #include "DFA.h"
 #include "NFA.h"
 #include "Regex_Parser.h"
@@ -14,55 +16,60 @@ int main()
   // Prints the program's title
   void print_title();
   
-  print_title();
+//  print_title();
   
-  string input_regex;
-  getline(cin, input_regex);
-
+  string input_regex {""};
+ 
+  // Main program loop:
   // Accept regular expressions from user until they enter "quit"
-  while (input_regex != "quit")
-  {
-    // Parse the regular expression and create an NFA
-    NFA* nfa_pt = Regex_Parser::regex_to_nfa(input_regex);
-
-    if (nfa_pt == nullptr)
-    {
-      // Parsing failed
-      cerr << "Error. Invalid regex format" << endl;
-    }
-    else
-    {
-      // create minimized DFA
-      DFA dfa{*nfa_pt};
-      dfa.minimize();
-
-      // Ask for strings for the DFA to accept
-      string to_accept;
-      cout << "Enter the strings to be accepted by \"" << input_regex;
-      cout << "\" (one per line). Type \"quit\" to quit." << endl;
-      
-      getline(cin, to_accept);
-      while (to_accept != "quit")
-      {
-        bool accepted {dfa.accept(to_accept)};
-
-        if (accepted)
-        {
-          cout << "accepted" << endl;
-        }
-        else
-        {
-          cout << "not accepted" << endl;
-        }
-      
-        getline(cin, to_accept);
-      }
-
-      delete nfa_pt;
-    }
-
+  while (true)
+  {    
     cout << "Enter a regular expression. Type \"quit\" to quit: ";
     getline(cin, input_regex);
+
+    // Parse the regular expression and create an NFA
+    unique_ptr<NFA> nfa_pt;
+    try
+    {
+      nfa_pt = Regex_Parser::regex_to_nfa(input_regex);
+    }
+    catch (std::runtime_error& e)
+    {
+      cerr << "Invalid Regex: " << e.what() << endl;
+      input_regex.clear();
+      continue; 
+    }
+
+    if (input_regex == "quit")
+    {
+      break;
+    }
+
+    // create minimized DFA
+    DFA dfa{*nfa_pt};
+    dfa.minimize();
+
+    // Ask for strings for the DFA to accept
+    string to_accept;
+    cout << "Enter the strings to be accepted by \"" << input_regex;
+    cout << "\" (one per line). Type \"quit\" to quit." << endl;
+      
+    getline(cin, to_accept);
+    while (to_accept != "quit")
+    {
+      bool accepted {dfa.accept(to_accept)};
+
+      if (accepted)
+      {
+        cout << "accepted" << endl;
+      }
+      else
+      {
+        cout << "not accepted" << endl;
+      }
+      
+      getline(cin, to_accept);
+    } 
   }
   
   return 0;
@@ -70,7 +77,7 @@ int main()
 
 void print_title()
 {
-  cout << "Regex_Matcher, a regular expression matching program" << endl <<
+  cout << "Regex_Matcher - a regular expression matching program" << endl <<
     endl;
  
   cout << ". For this program, a regular expression is defined recursively as: "
@@ -82,18 +89,21 @@ void print_title()
   cout << "\t- the closure of a regular expression \"Expr*\"" << endl;
   cout << "\t- the concatenation of two regular expressions \"ExprExpr\"" <<
     endl; 
-  cout << "\t- the disjunction of two regular expressions \"Expr|Expr\"" <<
+  cout << "\t- the alternation of two regular expressions \"Expr|Expr\"" <<
     endl << endl;
 
 
   cout << ". \"a single character\" means:" << endl;
-  cout << "\t- any printable ascii character (including spaces)" << endl;
+  cout << "\t- ascii values 33-126 (\'!\'-\'~\')" << endl;
   cout << "\t- the following escape sequences: " << 
-    "\'\\|\', \'\\*\', \'\\(\',\'\\)\', \'\\[\', \'\\]\', and \'\\\\\'" << 
+    "'\\|', '\\*', '\\(', '\\)', '\\[', '\\]', '\\s' (space), and '\\\\'" << 
+    endl;
+  cout << ". Literal blank characters in the regex are ignored." << 
+   " Use the escape sequence '\\s' to include blanks." << endl << endl;
+  cout << ". Other whitespace characters (tab, newline, etc) are invalid" <<
     endl << endl;
-  
   cout << ". The interpretation of the regular expressions follows" <<
-    " the following order of operations" << endl;
+    " the following order of operations" << endl << endl;
   
   cout << "\t- ()" << endl;
   cout << "\t- *" << endl;
@@ -102,6 +112,7 @@ void print_title()
   cout << "Ex: \"a*\" matches \"\", \"a\", \"aa\"" <<
     " and does not match \"b\", \"aaaab\", \"aaabaaa\"" << endl << endl;
 
+  cout << "Bracket Expressions:" << endl;
   cout << "A bracket expression is a list of characters enclosed " <<
     "by square brackets []" << endl;
   cout << "Ranges of characters can be included in a bracket expression" << 
@@ -115,11 +126,8 @@ void print_title()
 
   cout << "Metacharacters lose their meaning in bracket expressions." << endl;
   cout << "To include the literal ']', place it first in the list." << endl;
+  cout << "To include the literal '-', place it last in the list." << endl;
   cout << "To include the literal '^', place it anywhere except first." << 
     endl;
-  cout << "A literal '-' cannot be used within a bracket expression" << endl;
   cout << endl;
-
-  cout << "Enter a regular expression. Type \"quit\" to quit: ";
-
 }
