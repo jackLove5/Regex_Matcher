@@ -36,8 +36,17 @@ unique_ptr<NFA> Regex_Parser::regex_to_nfa(const std::string& regex)
   // Parse the regex
   unique_ptr<NFA> result = goal();
 
-  delete [] input;
-  return result;
+  if (parse_location < cpy.length())
+  {
+    string msg = string("Invalid ") + input[parse_location] + " character";
+    delete [] input;
+    throw runtime_error(msg);
+  }
+  else
+  { 
+    delete [] input;
+    return result;
+  }
 }
 
 void Regex_Parser::remove_spaces(string& str)
